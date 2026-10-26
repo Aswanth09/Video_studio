@@ -4,6 +4,7 @@ import assetHub2 from "../assets/asset_hub_1.png";
 import assetHub3 from "../assets/asset_hub_2.png";
 import assetHub4 from "../assets/asset_hub_3.png";
 import assetHub5 from "../assets/asset_hub_4.png";
+import { useProjectStore, AspectRatio } from "../store/useProjectStore";
 
 export interface ProjectHubScreenProps {
   onNavigate?: (view: string) => void;
@@ -14,6 +15,9 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
   onNavigate,
   onOpenProject
 }) => {
+  const setProject = useProjectStore((s) => s.setProject);
+  const setActiveView = useProjectStore((s) => s.setActiveView);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "9:16" | "16:9" | "1:1" | "fav" | "archive">("all");
   const [sortBy, setSortBy] = useState("modified");
@@ -43,10 +47,10 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 
   // New project modal form state
   const [newProjectName, setNewProjectName] = useState("Commercial_Spot_4K");
-  const [newProjectAspect, setNewProjectAspect] = useState("9:16");
+  const [newProjectAspect, setNewProjectAspect] = useState<AspectRatio>("9:16");
   const [newProjectFps, setNewProjectFps] = useState("60");
 
-  const handleSelectProject = (id: string, name: string, aspect: string, fps: number) => {
+  const handleSelectProject = (id: string, name: string, aspect: AspectRatio, fps: number) => {
     setActiveProject(prev => ({
       ...prev,
       id,
@@ -54,8 +58,18 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
       aspectRatio: aspect,
       fps
     }));
+    setProject({
+      projectId: id,
+      projectName: name,
+      aspectRatio: aspect,
+      baseFps: fps
+    });
+    setActiveView("EDITOR");
     if (onOpenProject) {
       onOpenProject(id);
+    }
+    if (onNavigate) {
+      onNavigate("editor");
     }
   };
 
@@ -63,9 +77,6 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
     e.preventDefault();
     handleSelectProject(`proj_${Date.now()}`, newProjectName, newProjectAspect, Number(newProjectFps));
     setIsModalOpen(false);
-    if (onNavigate) {
-      onNavigate("editor");
-    }
   };
 
   return (
@@ -105,7 +116,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <span>Open File (.hve)</span>
 </button>
 {/*  New Project Primary Button with glowing ring animation  */}
-<button className="relative group overflow-hidden flex items-center gap-space-xs px-space-xl py-1.5 rounded-lg bg-gradient-to-r from-primary-container via-inverse-primary to-secondary text-white font-body-md text-body-md font-semibold shadow-lg hover:shadow-primary-container/40 transition-all active:scale-[0.98]" id="openNewProjectModalBtn">
+<button onClick={() => setIsModalOpen(true)} className="relative group overflow-hidden flex items-center gap-space-xs px-space-xl py-1.5 rounded-lg bg-gradient-to-r from-primary-container via-inverse-primary to-secondary text-white font-body-md text-body-md font-semibold shadow-lg hover:shadow-primary-container/40 transition-all active:scale-[0.98]" id="openNewProjectModalBtn">
 <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></span>
 <span className="material-symbols-outlined text-[18px]">add_circle</span>
 <span>+ New Project</span>
@@ -162,7 +173,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </div>
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-space-md" id="projectsGrid">
 {/*  Card 1: Tokyo_Night_Reel_2025 (9:16 Vertical)  */}
-<article className="project-card group relative flex flex-col bg-surface-container-low hover:bg-surface-container rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1" >
+<article onClick={() => handleSelectProject("proj_916_tokyo", "Tokyo_Night_Reel_2025", "9:16", 60)} className="project-card group relative flex flex-col bg-surface-container-low hover:bg-surface-container rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1" >
 {/*  Thumbnail Container with 9:16 framing illusion  */}
 <div className="relative w-full h-44 bg-surface-container-lowest flex items-center justify-center overflow-hidden">
 <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100" alt="Cinematic cyberpunk neon rain soaked Tokyo street at dusk with glowing purple and cyan holographic billboards, reflective asphalt, dynamic camera angle, high budget movie still" src={assetHub2}/>
@@ -215,7 +226,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </div>
 </article>
 {/*  Card 2: Cyberpunk_Car_Chase_4K (16:9 Cinema)  */}
-<article className="project-card group relative flex flex-col bg-surface-container-low hover:bg-surface-container rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1" >
+<article onClick={() => handleSelectProject("proj_169_car_chase", "Cyberpunk_Car_Chase_4K", "16:9", 24)} className="project-card group relative flex flex-col bg-surface-container-low hover:bg-surface-container rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1" >
 <div className="relative w-full h-44 bg-surface-container-lowest flex items-center justify-center overflow-hidden">
 <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100" alt="High speed cinematic vehicle pursuit at midnight through neon-lit sci-fi megacity tunnels with sparks and motion blur, 4K anamorphic lens flares in deep blue and indigo" src={assetHub3}/>
 <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
@@ -254,7 +265,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </div>
 </article>
 {/*  Card 3: Product_Launch_Square (1:1 Square)  */}
-<article className="project-card group relative flex flex-col bg-surface-container-low hover:bg-surface-container rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1" >
+<article onClick={() => handleSelectProject("proj_11_product", "Product_Launch_Square", "1:1", 30)} className="project-card group relative flex flex-col bg-surface-container-low hover:bg-surface-container rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1" >
 <div className="relative w-full h-44 bg-surface-container-lowest flex items-center justify-center overflow-hidden">
 <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100" alt="Minimalist luxury tech hardware device studio shot against dark moody obsidian background with cyan rim edge lighting and floating titanium particles, sleek industrial design" src={assetHub4}/>
 <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
@@ -287,7 +298,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </div>
 </article>
 {/*  Card 4: Synthwave_Music_Video (16:9 Cinema)  */}
-<article className="project-card group relative flex flex-col bg-surface-container-low hover:bg-surface-container rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1" >
+<article onClick={() => handleSelectProject("proj_169_synthwave", "Synthwave_Music_Video", "16:9", 60)} className="project-card group relative flex flex-col bg-surface-container-low hover:bg-surface-container rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1" >
 <div className="relative w-full h-44 bg-surface-container-lowest flex items-center justify-center overflow-hidden">
 <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100" alt="Retro 80s futuristic neon wireframe landscape with vivid magenta sunset, chrome grids, synthwave aesthetics and electronic music visualizer spectrum" src={assetHub5}/>
 <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
@@ -320,7 +331,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </div>
 </article>
 {/*  Card 5: Empty / New Project Template Card  */}
-<article className="group relative flex flex-col items-center justify-center min-h-[220px] bg-surface-container-lowest hover:bg-surface-container-low rounded-xl p-space-lg text-center cursor-pointer transition-all shadow-sm hover:shadow-lg" id="newProjectCardTrigger">
+<article onClick={() => setIsModalOpen(true)} className="group relative flex flex-col items-center justify-center min-h-[220px] bg-surface-container-lowest hover:bg-surface-container-low rounded-xl p-space-lg text-center cursor-pointer transition-all shadow-sm hover:shadow-lg" id="newProjectCardTrigger">
 <div className="w-14 h-14 rounded-full bg-surface-container group-hover:bg-primary-container text-outline group-hover:text-on-primary-container flex items-center justify-center transition-all mb-space-sm group-hover:scale-110">
 <span className="material-symbols-outlined text-[28px]">add</span>
 </div>
@@ -442,9 +453,9 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </div>
 </div>
 {/*  2. Modal Overlay: "New Project Setup Modal" (Controlled via modalBackdrop & JS)  */}
-<div className="fixed inset-0 z-50 flex items-center justify-center p-space-md bg-surface-container-lowest/80 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-200" id="newProjectModal">
+<div className={`fixed inset-0 z-50 flex items-center justify-center p-space-md bg-surface-container-lowest/80 backdrop-blur-md transition-all duration-200 ${isModalOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`} id="newProjectModal">
 {/*  Modal Dialog Surface  */}
-<div className="relative w-full max-w-2xl bg-surface-container rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-200" id="modalDialogBox">
+<div className={`relative w-full max-w-2xl bg-surface-container rounded-2xl shadow-2xl overflow-hidden flex flex-col transform transition-all duration-200 ${isModalOpen ? "scale-100" : "scale-95"}`} id="modalDialogBox">
 {/*  Modal Top Title Strip  */}
 <div className="flex items-center justify-between px-space-xl py-space-md bg-surface-container-high">
 <div className="flex items-center gap-space-sm">
@@ -456,12 +467,12 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <p className="text-outline font-body-sm text-body-sm">Configure timeline format, aspect ratio, audio engine & color grading target</p>
 </div>
 </div>
-<button className="w-8 h-8 rounded-lg flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container-highest transition-colors" id="closeModalBtn">
+<button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container-highest transition-colors" id="closeModalBtn">
 <span className="material-symbols-outlined text-[20px]">close</span>
 </button>
 </div>
 {/*  Modal Body  */}
-<form className="p-space-xl flex flex-col gap-space-lg max-h-[819px] overflow-y-auto" id="newProjectForm" onSubmit={(e) => { e.preventDefault(); }}>
+<form className="p-space-xl flex flex-col gap-space-lg max-h-[819px] overflow-y-auto" id="newProjectForm" onSubmit={handleCreateProject}>
 {/*  Project Title Input  */}
 <div className="flex flex-col gap-space-xs">
 <label className="text-on-surface font-body-sm text-body-sm font-semibold flex items-center justify-between" htmlFor="projectTitleInput">
@@ -470,7 +481,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </label>
 <div className="relative flex items-center">
 <span className="material-symbols-outlined absolute left-3 text-secondary text-[18px]">terminal</span>
-<input className="w-full bg-surface-container-lowest text-on-surface font-label-md text-label-md pl-10 pr-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary" id="projectTitleInput" required type="text" value="Neon_Drift_Cinematic_v1"/>
+<input className="w-full bg-surface-container-lowest text-on-surface font-label-md text-label-md pl-10 pr-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary" id="projectTitleInput" required type="text" value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)}/>
 </div>
 </div>
 {/*  Aspect Ratio Selector Grid  */}
@@ -481,9 +492,9 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </div>
 <div className="grid grid-cols-1 md:grid-cols-3 gap-space-sm" id="aspectRatioGroup">
 {/*  9:16 (Selected by default)  */}
-<label className="aspect-card cursor-pointer relative flex flex-col p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-all shadow-sm">
-<input defaultChecked className="sr-only" name="aspectRatio"  type="radio" value="9:16"/>
-<div className="aspect-indicator absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-on-secondary text-[10px]">
+<label onClick={() => setNewProjectAspect("9:16")} className={`aspect-card cursor-pointer relative flex flex-col p-space-md rounded-xl transition-all shadow-sm ${newProjectAspect === "9:16" ? "bg-surface-container-highest border border-secondary/50" : "bg-surface-container-low hover:bg-surface-container-highest"}`}>
+<input className="sr-only" name="aspectRatio" type="radio" value="9:16" checked={newProjectAspect === "9:16"} onChange={() => setNewProjectAspect("9:16")}/>
+<div className={`aspect-indicator absolute top-2.5 right-2.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${newProjectAspect === "9:16" ? "bg-secondary text-on-secondary" : "bg-surface-container-highest text-outline opacity-0"}`}>
 <span className="material-symbols-outlined text-[12px]">check</span>
 </div>
 <div className="w-full h-16 flex items-center justify-center mb-space-xs">
@@ -497,9 +508,9 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <span className="font-label-sm text-label-sm text-secondary text-center mt-1 font-mono">1080 × 1920</span>
 </label>
 {/*  16:9 Landscape  */}
-<label className="aspect-card cursor-pointer relative flex flex-col p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-all shadow-sm">
-<input className="sr-only" name="aspectRatio"  type="radio" value="16:9"/>
-<div className="aspect-indicator absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-surface-container-highest flex items-center justify-center text-outline text-[10px] opacity-0">
+<label onClick={() => setNewProjectAspect("16:9")} className={`aspect-card cursor-pointer relative flex flex-col p-space-md rounded-xl transition-all shadow-sm ${newProjectAspect === "16:9" ? "bg-surface-container-highest border border-secondary/50" : "bg-surface-container-low hover:bg-surface-container-highest"}`}>
+<input className="sr-only" name="aspectRatio" type="radio" value="16:9" checked={newProjectAspect === "16:9"} onChange={() => setNewProjectAspect("16:9")}/>
+<div className={`aspect-indicator absolute top-2.5 right-2.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${newProjectAspect === "16:9" ? "bg-secondary text-on-secondary" : "bg-surface-container-highest text-outline opacity-0"}`}>
 <span className="material-symbols-outlined text-[12px]">check</span>
 </div>
 <div className="w-full h-16 flex items-center justify-center mb-space-xs">
@@ -513,9 +524,9 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <span className="font-label-sm text-label-sm text-outline text-center mt-1 font-mono">3840 × 2160 UHD</span>
 </label>
 {/*  1:1 Square Feed  */}
-<label className="aspect-card cursor-pointer relative flex flex-col p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-all shadow-sm">
-<input className="sr-only" name="aspectRatio"  type="radio" value="1:1"/>
-<div className="aspect-indicator absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-surface-container-highest flex items-center justify-center text-outline text-[10px] opacity-0">
+<label onClick={() => setNewProjectAspect("1:1")} className={`aspect-card cursor-pointer relative flex flex-col p-space-md rounded-xl transition-all shadow-sm ${newProjectAspect === "1:1" ? "bg-surface-container-highest border border-secondary/50" : "bg-surface-container-low hover:bg-surface-container-highest"}`}>
+<input className="sr-only" name="aspectRatio" type="radio" value="1:1" checked={newProjectAspect === "1:1"} onChange={() => setNewProjectAspect("1:1")}/>
+<div className={`aspect-indicator absolute top-2.5 right-2.5 w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${newProjectAspect === "1:1" ? "bg-secondary text-on-secondary" : "bg-surface-container-highest text-outline opacity-0"}`}>
 <span className="material-symbols-outlined text-[12px]">check</span>
 </div>
 <div className="w-full h-16 flex items-center justify-center mb-space-xs">
@@ -534,30 +545,30 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <div className="flex flex-col gap-space-xs">
 <label className="text-on-surface font-body-sm text-body-sm font-semibold">Frame Rate (FPS)</label>
 <div className="grid grid-cols-3 gap-space-sm" id="fpsRadioGroup">
-<label className="cursor-pointer flex items-center justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-all">
-<input className="sr-only" name="projectFps"  type="radio" value="24"/>
+<label onClick={() => setNewProjectFps("24")} className={`cursor-pointer flex items-center justify-between p-space-md rounded-xl transition-all ${newProjectFps === "24" ? "bg-surface-container-highest shadow-sm border border-secondary/40" : "bg-surface-container-low hover:bg-surface-container-highest"}`}>
+<input className="sr-only" name="projectFps" type="radio" value="24" checked={newProjectFps === "24"} onChange={() => setNewProjectFps("24")}/>
 <div className="flex flex-col">
-<span className="font-label-md text-label-md font-semibold text-on-surface">24 fps</span>
+<span className={`font-label-md text-label-md font-semibold ${newProjectFps === "24" ? "text-secondary" : "text-on-surface"}`}>24 fps</span>
 <span className="font-label-sm text-label-sm text-outline">Cinematic Cadence</span>
 </div>
-<span className="material-symbols-outlined text-outline text-[16px] fps-check opacity-0">check_circle</span>
+<span className={`material-symbols-outlined text-[16px] fps-check ${newProjectFps === "24" ? "text-secondary opacity-100" : "text-outline opacity-0"}`}>check_circle</span>
 </label>
-<label className="cursor-pointer flex items-center justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-all">
-<input className="sr-only" name="projectFps"  type="radio" value="30"/>
+<label onClick={() => setNewProjectFps("30")} className={`cursor-pointer flex items-center justify-between p-space-md rounded-xl transition-all ${newProjectFps === "30" ? "bg-surface-container-highest shadow-sm border border-secondary/40" : "bg-surface-container-low hover:bg-surface-container-highest"}`}>
+<input className="sr-only" name="projectFps" type="radio" value="30" checked={newProjectFps === "30"} onChange={() => setNewProjectFps("30")}/>
 <div className="flex flex-col">
-<span className="font-label-md text-label-md font-semibold text-on-surface">30 fps</span>
+<span className={`font-label-md text-label-md font-semibold ${newProjectFps === "30" ? "text-secondary" : "text-on-surface"}`}>30 fps</span>
 <span className="font-label-sm text-label-sm text-outline">Standard Broadcast</span>
 </div>
-<span className="material-symbols-outlined text-outline text-[16px] fps-check opacity-0">check_circle</span>
+<span className={`material-symbols-outlined text-[16px] fps-check ${newProjectFps === "30" ? "text-secondary opacity-100" : "text-outline opacity-0"}`}>check_circle</span>
 </label>
 {/*  60 fps (Selected)  */}
-<label className="cursor-pointer flex items-center justify-between p-space-md rounded-xl bg-surface-container-highest shadow-sm">
-<input defaultChecked className="sr-only" name="projectFps"  type="radio" value="60"/>
+<label onClick={() => setNewProjectFps("60")} className={`cursor-pointer flex items-center justify-between p-space-md rounded-xl transition-all ${newProjectFps === "60" ? "bg-surface-container-highest shadow-sm border border-secondary/40" : "bg-surface-container-low hover:bg-surface-container-highest"}`}>
+<input className="sr-only" name="projectFps" type="radio" value="60" checked={newProjectFps === "60"} onChange={() => setNewProjectFps("60")}/>
 <div className="flex flex-col">
-<span className="font-label-md text-label-md font-semibold text-secondary">60 fps</span>
+<span className={`font-label-md text-label-md font-semibold ${newProjectFps === "60" ? "text-secondary" : "text-on-surface"}`}>60 fps</span>
 <span className="font-label-sm text-label-sm text-outline">High Motion / Gaming</span>
 </div>
-<span className="material-symbols-outlined text-secondary text-[16px] fps-check">check_circle</span>
+<span className={`material-symbols-outlined text-[16px] fps-check ${newProjectFps === "60" ? "text-secondary opacity-100" : "text-outline opacity-0"}`}>check_circle</span>
 </label>
 </div>
 </div>
@@ -583,7 +594,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </div>
 {/*  Modal Action Footer  */}
 <div className="flex items-center justify-end gap-space-md pt-space-md mt-space-xs bg-surface-container">
-<button className="px-space-lg py-2 rounded-xl bg-surface-container-highest hover:bg-surface-bright text-on-surface font-body-md text-body-md transition-all" id="cancelModalBtn" type="button">
+<button onClick={() => setIsModalOpen(false)} className="px-space-lg py-2 rounded-xl bg-surface-container-highest hover:bg-surface-bright text-on-surface font-body-md text-body-md transition-all" id="cancelModalBtn" type="button">
             Cancel
           </button>
 <button className="flex items-center gap-space-xs px-space-xl py-2 rounded-xl bg-primary-container hover:bg-inverse-primary text-on-primary-container font-body-md text-body-md font-semibold shadow-lg hover:shadow-primary-container/40 transition-all" type="submit">

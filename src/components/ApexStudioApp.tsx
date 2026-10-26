@@ -5,6 +5,7 @@ import EditorIndustrialScreen from "./EditorIndustrialScreen";
 import TimelineMultiTrackScreen from "./TimelineMultiTrackScreen";
 import InspectorContextualScreen from "./InspectorContextualScreen";
 import DeliverExportScreen from "./DeliverExportScreen";
+import { useProjectStore } from "../store/useProjectStore";
 
 export type ScreenView =
   | "hub"
@@ -15,8 +16,17 @@ export type ScreenView =
   | "export";
 
 export const ApexStudioApp: React.FC = () => {
-  const [currentView, setCurrentView] = useState<ScreenView>("hub");
-  const [currentProject, setCurrentProject] = useState<string>("Cyberpunk_Short_v3.hve");
+  const activeView = useProjectStore((s) => s.activeView);
+  const isExportModalOpen = useProjectStore((s) => s.isExportModalOpen);
+  const projectName = useProjectStore((s) => s.projectName);
+  const setActiveView = useProjectStore((s) => s.setActiveView);
+  const setProject = useProjectStore((s) => s.setProject);
+  const setExportModalOpen = useProjectStore((s) => s.setExportModalOpen);
+
+  const [editorSubView, setEditorSubView] = useState<ScreenView>("timeline");
+
+  const currentView: ScreenView =
+    activeView === "HUB" ? "hub" : isExportModalOpen ? "export" : editorSubView;
 
   const screens = [
     { id: "hub", label: "Project Hub (VIEW_HUB)", icon: "grid_view" },
@@ -28,12 +38,45 @@ export const ApexStudioApp: React.FC = () => {
   ] as const;
 
   const handleNavigate = (view: string) => {
-    if (view === "hub" || view === "projects-hub") setCurrentView("hub");
-    else if (view === "editor" || view === "edit-and-cut") setCurrentView("timeline");
-    else if (view === "3panel") setCurrentView("editor-3panel");
-    else if (view === "industrial") setCurrentView("editor-industrial");
-    else if (view === "inspector") setCurrentView("inspector");
-    else if (view === "export" || view === "export-and-render") setCurrentView("export");
+    if (view === "hub" || view === "projects-hub") {
+      setActiveView("HUB");
+      setExportModalOpen(false);
+    } else if (view === "editor" || view === "edit-and-cut") {
+      setActiveView("EDITOR");
+      setEditorSubView("timeline");
+      setExportModalOpen(false);
+    } else if (view === "3panel") {
+      setActiveView("EDITOR");
+      setEditorSubView("editor-3panel");
+      setExportModalOpen(false);
+    } else if (view === "industrial") {
+      setActiveView("EDITOR");
+      setEditorSubView("editor-industrial");
+      setExportModalOpen(false);
+    } else if (view === "inspector") {
+      setActiveView("EDITOR");
+      setEditorSubView("inspector");
+      setExportModalOpen(false);
+    } else if (view === "export" || view === "export-and-render") {
+      setActiveView("EDITOR");
+      setEditorSubView("export");
+      setExportModalOpen(true);
+    }
+  };
+
+  const handleScreenSwitcherClick = (screenId: ScreenView) => {
+    if (screenId === "hub") {
+      setActiveView("HUB");
+      setExportModalOpen(false);
+    } else if (screenId === "export") {
+      setActiveView("EDITOR");
+      setEditorSubView("export");
+      setExportModalOpen(true);
+    } else {
+      setActiveView("EDITOR");
+      setEditorSubView(screenId);
+      setExportModalOpen(false);
+    }
   };
 
   return (
@@ -48,7 +91,7 @@ export const ApexStudioApp: React.FC = () => {
           return (
             <button
               key={screen.id}
-              onClick={() => setCurrentView(screen.id as ScreenView)}
+              onClick={() => handleScreenSwitcherClick(screen.id as ScreenView)}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
                 isActive
                   ? "bg-primary text-on-primary shadow-md font-semibold scale-105"
@@ -70,27 +113,28 @@ export const ApexStudioApp: React.FC = () => {
           <ProjectHubScreen
             onNavigate={handleNavigate}
             onOpenProject={(proj) => {
-              setCurrentProject(proj);
-              setCurrentView("timeline");
+              setProject({ projectName: proj });
+              setActiveView("EDITOR");
+              setEditorSubView("timeline");
             }}
           />
         )}
         {currentView === "editor-3panel" && (
           <Editor3PanelScreen
             onNavigate={handleNavigate}
-            projectName={currentProject}
+            projectName={projectName}
           />
         )}
         {currentView === "editor-industrial" && (
           <EditorIndustrialScreen
             onNavigate={handleNavigate}
-            projectName={currentProject}
+            projectName={projectName}
           />
         )}
         {currentView === "timeline" && (
           <TimelineMultiTrackScreen
             onNavigate={handleNavigate}
-            projectName={currentProject}
+            projectName={projectName}
           />
         )}
         {currentView === "inspector" && (
@@ -101,7 +145,7 @@ export const ApexStudioApp: React.FC = () => {
         {currentView === "export" && (
           <DeliverExportScreen
             onNavigate={handleNavigate}
-            projectName={currentProject}
+            projectName={projectName}
           />
         )}
       </main>
@@ -110,4 +154,3 @@ export const ApexStudioApp: React.FC = () => {
 };
 
 export default ApexStudioApp;
-
