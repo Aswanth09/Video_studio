@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import logoImg from "../assets/apex_studio_logo.png";
 import previewImg from "../assets/asset_editor_3panel_9.png";
 import { usePlaybackStore, formatSMPTE } from "../store/usePlaybackStore";
 import { useProjectStore } from "../store/useProjectStore";
 import { useTimelineStore } from "../store/useTimelineStore";
+import { TimelineRuler, VirtualizedTrackLane } from "./timeline";
 
 export interface TimelineMultiTrackScreenProps {
   onNavigate?: (view: string) => void;
@@ -28,52 +29,150 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
   const setActiveView = useProjectStore((s) => s.setActiveView);
   const setExportModalOpen = useProjectStore((s) => s.setExportModalOpen);
 
+  const tracks = useTimelineStore((s) => s.tracks);
+  const clips = useTimelineStore((s) => s.clips);
+  const selectedClipId = useTimelineStore((s) => s.selectedClipId);
+  const selectClip = useTimelineStore((s) => s.selectClip);
+  const transitions = useTimelineStore((s) => s.transitions);
   const zoomPxPerSecond = useTimelineStore((s) => s.zoomPxPerSecond);
   const setZoom = useTimelineStore((s) => s.setZoom);
-  const selectedClipId = useTimelineStore((s) => s.selectedClipId);
+  const activeTool = useTimelineStore((s) => s.activeTool);
+  const setActiveTool = useTimelineStore((s) => s.setActiveTool);
+  const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
+  const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
   const splitClipAtFrame = useTimelineStore((s) => s.splitClipAtFrame);
 
-  const [activeTool, setActiveTool] = useState<"v" | "c" | "b" | "a" | "z">("v");
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollLeft, setScrollLeft] = useState<number>(0);
+  const [viewportWidth, setViewportWidth] = useState<number>(1200);
   const [selectedTrack, setSelectedTrack] = useState<string>("V1");
-  const [snappingEnabled, setSnappingEnabled] = useState<boolean>(true);
   const [isScrubbing, setIsScrubbing] = useState<boolean>(false);
+
+  const maxClipFrame = useMemo(() => {
+    return clips.reduce((acc, c) => Math.max(acc, c.startFrame + c.durationFrames), 0);
+  }, [clips]);
+  const totalSequenceFrames = Math.max(totalFrames, maxClipFrame);
+  const totalTimelineWidth = Math.max(viewportWidth, Math.ceil((totalSequenceFrames / fps) * zoomPxPerSecond));
+
+  const snapPoints = useMemo(() => {
+    const set = new Set<number>([0, totalSequenceFrames]);
+    clips.forEach((c) => {
+      set.add(c.startFrame);
+      set.add(c.startFrame + c.durationFrames);
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [clips, totalSequenceFrames]);
+
+  const selectedClip = useMemo(() => clips.find((c) => c.id === selectedClipId), [clips, selectedClipId]);
 
   const displayProjectName = activeProjectName || projectName;
   const formattedTc = formatSMPTE(currentFrame, fps);
-  const formattedTotalTc = formatSMPTE(totalFrames, fps);
+  const formattedTotalTc = formatSMPTE(totalSequenceFrames, fps);
   const playheadPixelX = (currentFrame * zoomPxPerSecond) / fps;
+
+  // Observe scroll container client width
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    setViewportWidth(container.clientWidth);
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setViewportWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollLeft(e.currentTarget.scrollLeft);
+    setViewportWidth(e.currentTarget.clientWidth);
+  };
+
+  const handleFitToScreen = useCallback(() => {
+    const container = scrollContainerRef.current;
+    const currentViewport = container ? container.clientWidth : viewportWidth;
+    const availableWidth = Math.max(400, currentViewport - 32);
+    const fitZoom = Math.max(20, Math.min(140, Math.round((availableWidth * fps) / totalSequenceFrames)));
+    setZoom(fitZoom);
+    container?.scrollTo({ left: 0, behavior: "smooth" });
+  }, [viewportWidth, fps, totalSequenceFrames, setZoom]);
 
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
       const state = usePlaybackStore.getState();
       const next = state.currentFrame + 1;
-      if (next >= state.totalFrames) {
+      if (next >= totalSequenceFrames) {
         state.pause();
       } else {
         state.seekToFrame(next);
       }
     }, 1000 / fps);
     return () => clearInterval(interval);
-  }, [isPlaying, fps]);
+  }, [isPlaying, fps, totalSequenceFrames]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      // Space: Play / Pause
       if (e.code === "Space") {
         e.preventDefault();
         togglePlayback();
-      } else if (e.code === "ArrowLeft") {
+      }
+      // Arrow keys: Nudge Playhead
+      else if (e.code === "ArrowLeft") {
         e.preventDefault();
         seekToFrame(Math.max(0, currentFrame - (e.shiftKey ? fps : 1)));
       } else if (e.code === "ArrowRight") {
         e.preventDefault();
-        seekToFrame(Math.min(totalFrames, currentFrame + (e.shiftKey ? fps : 1)));
+        seekToFrame(Math.min(totalSequenceFrames, currentFrame + (e.shiftKey ? fps : 1)));
+      }
+      // Shift + Z: Fit sequence to viewport
+      else if (e.shiftKey && (e.key === "Z" || e.key === "z")) {
+        e.preventDefault();
+        handleFitToScreen();
+      }
+      // V: Pointer / Selection Tool
+      else if (e.key === "v" || e.key === "V") {
+        e.preventDefault();
+        setActiveTool("v");
+      }
+      // C: Razor Cut Tool (Splits active selected clip at playhead)
+      else if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        setActiveTool("c");
+        if (selectedClipId) {
+          splitClipAtFrame(selectedClipId, currentFrame);
+        }
+      }
+      // B: Ripple Edit Tool
+      else if (e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        setActiveTool("b");
+      }
+      // S: Toggle Snapping
+      else if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        toggleSnapping();
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [togglePlayback, seekToFrame, currentFrame, fps, totalFrames]);
+  }, [
+    togglePlayback,
+    seekToFrame,
+    currentFrame,
+    fps,
+    totalSequenceFrames,
+    handleFitToScreen,
+    setActiveTool,
+    selectedClipId,
+    splitClipAtFrame,
+    toggleSnapping,
+  ]);
 
   const handlePlayheadPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     setIsScrubbing(true);
@@ -82,12 +181,23 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 
   const handlePlayheadPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isScrubbing) return;
-    const container = document.getElementById("timeline-scroll-container");
+    const container = scrollContainerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
     const currentX = e.clientX - rect.left + container.scrollLeft;
-    const targetFrame = Math.round(currentX / (zoomPxPerSecond / fps));
-    seekToFrame(targetFrame);
+    let targetFrame = Math.round(currentX / (zoomPxPerSecond / fps));
+
+    if (snappingEnabled && snapPoints.length > 0) {
+      const snapThreshold = Math.max(3, Math.round(10 / (zoomPxPerSecond / fps)));
+      for (const snap of snapPoints) {
+        if (Math.abs(targetFrame - snap) <= snapThreshold) {
+          targetFrame = snap;
+          break;
+        }
+      }
+    }
+
+    seekToFrame(Math.max(0, Math.min(totalSequenceFrames, targetFrame)));
   };
 
   const handlePlayheadPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -95,13 +205,6 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {}
-  };
-
-  const handleRulerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const targetFrame = Math.round(clickX / (zoomPxPerSecond / fps));
-    seekToFrame(targetFrame);
   };
 
   return (
@@ -163,7 +266,7 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 <div className="flex flex-col gap-1.5 bg-[#131720] p-2 rounded-sm border border-[#1E2330]">
 <div className="flex items-center justify-between text-on-surface font-headline-md text-[11px]">
 <span className="flex items-center gap-1 text-secondary font-semibold">
-<span className="material-symbols-outlined text-[13px]">transform</span> Transform: <span className="font-mono text-white text-[10px]" id="inspector-clip-label">CYBER_PUNK_ALLEY_02</span>
+<span className="material-symbols-outlined text-[13px]">transform</span> Transform: <span className="font-mono text-white text-[10px]" id="inspector-clip-label">{selectedClip ? selectedClip.name : "Select a clip"}</span>
 </span>
 <button className="text-outline hover:text-on-surface text-[10px] font-label-sm">Reset</button>
 </div>
@@ -266,22 +369,22 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 {/*  Left: Tool Selection Matrix (Compact 24px square buttons)  */}
 <div className="flex items-center gap-1 font-label-sm text-[11px]" id="timeline-toolbar-tools">
 {/*  Selection Tool (V) - Active by default  */}
-<button className="w-6 h-6 rounded-sm bg-[#1C2438] border-b-2 border-secondary text-secondary flex items-center justify-center hover:bg-[#25304a] transition-colors" data-tool="V" id="tool-v" title="Selection Tool (V)">
+<button onClick={() => setActiveTool("v")} className={`w-6 h-6 rounded-sm flex items-center justify-center transition-colors ${activeTool === "v" ? "bg-[#1C2438] border-b-2 border-secondary text-secondary" : "border border-[#232938] text-slate-400 hover:bg-[#1C2230] hover:text-white"}`} data-tool="V" id="tool-v" title="Selection Tool (V)">
 <span className="material-symbols-outlined text-[15px]">near_me</span>
 </button>
 {/*  Razor Blade Tool (C)  */}
-<button className="w-6 h-6 rounded-sm border border-[#232938] text-slate-400 flex items-center justify-center hover:bg-[#1C2230] hover:text-white transition-colors" data-tool="C" id="tool-c" title="Razor Blade Tool (C)">
+<button onClick={() => { setActiveTool("c"); if (selectedClipId) splitClipAtFrame(selectedClipId, currentFrame); }} className={`w-6 h-6 rounded-sm flex items-center justify-center transition-colors ${activeTool === "c" ? "bg-[#1C2438] border-b-2 border-secondary text-secondary" : "border border-[#232938] text-slate-400 hover:bg-[#1C2230] hover:text-white"}`} data-tool="C" id="tool-c" title="Razor Blade Tool (C)">
 <span className="material-symbols-outlined text-[14px]">content_cut</span>
 </button>
 {/*  Ripple Edit Tool (B)  */}
-<button className="w-6 h-6 rounded-sm border border-[#232938] text-slate-400 flex items-center justify-center hover:bg-[#1C2230] hover:text-white transition-colors" data-tool="B" id="tool-b" title="Ripple Edit Tool (B)">
+<button onClick={() => setActiveTool("b")} className={`w-6 h-6 rounded-sm flex items-center justify-center transition-colors ${activeTool === "b" ? "bg-[#1C2438] border-b-2 border-secondary text-secondary" : "border border-[#232938] text-slate-400 hover:bg-[#1C2230] hover:text-white"}`} data-tool="B" id="tool-b" title="Ripple Edit Tool (B)">
 <span className="material-symbols-outlined text-[14px]">sync_alt</span>
 </button>
 <div className="h-4 w-px bg-[#232938] mx-0.5"></div>
 {/*  Snapping Toggle (S) with active cyan indicator dot  */}
-<button className="h-6 px-1.5 rounded-sm border border-[#232938] bg-[#161B26] text-slate-200 flex items-center gap-1 hover:bg-[#1C2230] text-[10px] font-mono transition-colors" id="tool-snap" title="Snapping Toggle (S)">
-<span className="w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_5px_#4cd7f6]" id="snap-dot"></span>
-<span className="font-semibold text-secondary">SNAP [S]</span>
+<button onClick={toggleSnapping} className={`h-6 px-1.5 rounded-sm border flex items-center gap-1 text-[10px] font-mono transition-colors ${snappingEnabled ? "border-secondary/60 bg-[#16202E] text-slate-100" : "border-[#232938] bg-[#161B26] text-slate-400 hover:bg-[#1C2230]"}`} id="tool-snap" title="Snapping Toggle (S)">
+<span className={`w-1.5 h-1.5 rounded-full ${snappingEnabled ? "bg-secondary shadow-[0_0_5px_#4cd7f6]" : "bg-slate-600"}`} id="snap-dot"></span>
+<span className={snappingEnabled ? "font-semibold text-secondary" : "text-slate-400"}>SNAP [S]</span>
 </button>
 {/*  Linked Selection Toggle (Ctrl+L)  */}
 <button className="h-6 px-1.5 rounded-sm border border-[#232938] bg-[#161B26] text-slate-200 flex items-center gap-1 hover:bg-[#1C2230] text-[10px] font-mono transition-colors" id="tool-link" title="Linked Selection (Ctrl+L)">
@@ -318,7 +421,7 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 <span className="material-symbols-outlined text-[13px]">zoom_in</span>
 <span className="font-mono text-[9px] text-slate-300 w-16 text-right" id="zoom-label">{(zoomPxPerSecond / 40).toFixed(1)}x ({zoomPxPerSecond}px/s)</span>
 </div>
-<button onClick={() => setZoom(40)} className="px-1.5 py-0.5 rounded-sm border border-[#232938] bg-[#161B26] hover:bg-[#1F2636] text-slate-300 hover:text-white text-[9px] font-mono flex items-center gap-1" id="btn-fit-zoom" title="Fit Sequence to Viewport (Shift+Z)">
+<button onClick={handleFitToScreen} className="px-1.5 py-0.5 rounded-sm border border-[#232938] bg-[#161B26] hover:bg-[#1F2636] text-slate-300 hover:text-white text-[9px] font-mono flex items-center gap-1" id="btn-fit-zoom" title="Fit Sequence to Viewport (Shift+Z)">
 <span className="material-symbols-outlined text-[11px]">fit_screen</span>
 <span>[Shift+Z]</span>
 </button>
@@ -388,8 +491,8 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 <div className="h-1 bg-[#1A2234] border-y border-[#232938] shrink-0"></div>
 {/*  Audio Tracks Header Stack  */}
 <div className="flex flex-col">
-{/*  A1: Master Dialogue / Voiceover (Height: 48px)  */}
-<div className="h-[48px] px-2 bg-[#121622] border-b border-[#1E2330] flex items-center justify-between">
+{/*  A1: Master Dialogue / Voiceover (Height: 44px)  */}
+<div className="h-[44px] px-2 bg-[#121622] border-b border-[#1E2330] flex items-center justify-between">
 <div className="flex flex-col">
 <div className="flex items-center gap-1.5 font-mono text-[10px]">
 <span className="font-bold text-emerald-400">A1</span>
@@ -436,217 +539,88 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 </div>
 </div>
 {/*  RIGHT TIMELINE CANVAS: HORIZONTAL SCROLL CONTAINER  */}
-<div className="flex-1 flex flex-col overflow-x-auto overflow-y-hidden relative bg-[#07090F] select-none" id="timeline-scroll-container">
-{/*  SMPTE TIME RULER & RENDER CACHE BAR (Height: 24px)  */}
-<div onClick={handleRulerClick} className="h-6 w-[5600px] bg-[#0E121B] border-b border-[#1E2330] relative select-none shrink-0 cursor-pointer" id="timeline-ruler">
-{/*  Render Cache Thin Bar (3px) immediately under the ticks  */}
-<div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#09101d] flex overflow-hidden">
-<div className="w-[1800px] h-full bg-[#0284c7]"></div>
-<div className="w-12 h-full bg-[#881337]"></div>
-<div className="w-[1200px] h-full bg-[#0284c7]"></div>
-<div className="w-8 h-full bg-[#881337]"></div>
-<div className="flex-1 h-full bg-[#0284c7]"></div>
-</div>
-{/*  Precision Tick Marks across 5600px  */}
-<div className="absolute inset-0 flex items-stretch">
-{/*  Repeatable Mark Blocks every 100px = 2s approx  */}
-<div className="relative w-full h-full">
-<span className="absolute left-1 top-0.5 text-[9px] font-mono text-slate-400 font-semibold">00:00:00:00</span>
-<div className="absolute left-0 bottom-1 w-px h-3 bg-[#334155]"></div>
-<div className="absolute left-12 bottom-1 w-px h-1.5 bg-[#1E293B]"></div>
-<div className="absolute left-24 bottom-1 w-px h-1.5 bg-[#1E293B]"></div>
-<div className="absolute left-36 bottom-1 w-px h-1.5 bg-[#1E293B]"></div>
-<div className="absolute left-48 bottom-1 w-px h-2 bg-[#2B354C]"></div>
-<span className="absolute left-[150px] top-0.5 text-[9px] font-mono text-slate-400">00:00:02:15</span>
-<div className="absolute left-[150px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[300px] top-0.5 text-[9px] font-mono text-slate-400">00:00:05:00</span>
-<div className="absolute left-[300px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[450px] top-0.5 text-[9px] font-mono text-slate-400">00:00:07:15</span>
-<div className="absolute left-[450px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[600px] top-0.5 text-[9px] font-mono text-slate-400">00:00:10:00</span>
-<div className="absolute left-[600px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[750px] top-0.5 text-[9px] font-mono text-slate-400">00:00:12:15</span>
-<div className="absolute left-[750px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[900px] top-0.5 text-[9px] font-mono text-secondary font-semibold">00:00:15:00</span>
-<div className="absolute left-[900px] bottom-1 w-px h-3 bg-secondary"></div>
-<span className="absolute left-[1050px] top-0.5 text-[9px] font-mono text-slate-400">00:00:17:15</span>
-<div className="absolute left-[1050px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[1200px] top-0.5 text-[9px] font-mono text-slate-400">00:00:20:00</span>
-<div className="absolute left-[1200px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[1400px] top-0.5 text-[9px] font-mono text-slate-400">00:00:25:00</span>
-<div className="absolute left-[1400px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[1650px] top-0.5 text-[9px] font-mono text-slate-400">00:00:30:00</span>
-<div className="absolute left-[1650px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[1950px] top-0.5 text-[9px] font-mono text-slate-400">00:00:35:00</span>
-<div className="absolute left-[1950px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[2250px] top-0.5 text-[9px] font-mono text-slate-400">00:00:40:00</span>
-<div className="absolute left-[2250px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[2550px] top-0.5 text-[9px] font-mono text-slate-400">00:00:45:00</span>
-<div className="absolute left-[2550px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[2900px] top-0.5 text-[9px] font-mono text-slate-400">00:01:00:00</span>
-<div className="absolute left-[2900px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[3400px] top-0.5 text-[9px] font-mono text-slate-400">00:01:30:00</span>
-<div className="absolute left-[3400px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[4000px] top-0.5 text-[9px] font-mono text-slate-400">00:02:00:00</span>
-<div className="absolute left-[4000px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[4600px] top-0.5 text-[9px] font-mono text-slate-400">00:03:00:00</span>
-<div className="absolute left-[4600px] bottom-1 w-px h-3 bg-[#334155]"></div>
-<span className="absolute left-[5200px] top-0.5 text-[9px] font-mono text-slate-400">00:04:00:00</span>
-<div className="absolute left-[5200px] bottom-1 w-px h-3 bg-[#334155]"></div>
-</div>
-</div>
-</div>
-{/*  MASTER TRACKS CANVAS WRAPPER (Width: 5600px for 55+ clips)  */}
-<div className="w-[5600px] flex-1 flex flex-col relative bg-[#080B12]" id="timeline-tracks-area">
-{/*  TRACK V2: OVERLAY / B-ROLL (Height: 42px)  */}
-<div className="h-[42px] border-b border-[#1A2234] relative flex items-center bg-[#0B0E16]/40">
-{/*  B-Roll Clip 1  */}
-<div className="timeline-clip absolute left-[220px] w-[180px] h-8 rounded-sm bg-[#162134] border border-[#283856] flex items-center px-2 cursor-pointer hover:border-secondary transition-all" data-scale="100.0%" data-title="METRO_PASS_OVERLAY.mov" data-x="0.00" data-y="0.00">
-<span className="text-[9px] font-mono text-secondary mr-1">[ ]</span>
-<span className="font-headline-md text-[10px] text-slate-200 truncate">METRO_PASS_OVERLAY.mov</span>
-<span className="ml-auto font-mono text-[8px] text-slate-400">03.00s</span>
-</div>
-{/*  B-Roll Clip 2  */}
-<div className="timeline-clip absolute left-[620px] w-[210px] h-8 rounded-sm bg-[#162134] border border-[#283856] flex items-center px-2 cursor-pointer hover:border-secondary transition-all" data-scale="105.0%" data-title="NEON_GLITCH_MATTE.mov" data-x="4.20" data-y="-2.10">
-<span className="text-[9px] font-mono text-secondary mr-1">[ ]</span>
-<span className="font-headline-md text-[10px] text-slate-200 truncate">NEON_GLITCH_MATTE.mov</span>
-<span className="ml-auto font-mono text-[8px] text-slate-400">03.50s</span>
-</div>
-{/*  B-Roll Clip 3  */}
-<div className="timeline-clip absolute left-[1250px] w-[260px] h-8 rounded-sm bg-[#162134] border border-[#283856] flex items-center px-2 cursor-pointer hover:border-secondary transition-all" data-scale="100.0%" data-title="DRONE_ESTABLISHING.mov" data-x="0.00" data-y="0.00">
-<span className="text-[9px] font-mono text-secondary mr-1">[ ]</span>
-<span className="font-headline-md text-[10px] text-slate-200 truncate">DRONE_ESTABLISHING.mov</span>
-<span className="ml-auto font-mono text-[8px] text-slate-400">04.30s</span>
-</div>
-{/*  B-Roll Clip 4  */}
-<div className="timeline-clip absolute left-[2100px] w-[240px] h-8 rounded-sm bg-[#162134] border border-[#283856] flex items-center px-2 cursor-pointer hover:border-secondary transition-all" data-scale="100.0%" data-title="RAIN_PUDDLE_REFLECT.mov" data-x="0.00" data-y="0.00">
-<span className="text-[9px] font-mono text-secondary mr-1">[ ]</span>
-<span className="font-headline-md text-[10px] text-slate-200 truncate">RAIN_PUDDLE_REFLECT.mov</span>
-<span className="ml-auto font-mono text-[8px] text-slate-400">04.00s</span>
-</div>
-</div>
-{/*  TRACK V1: PRIMARY FOOTAGE SEQUENCE (Height: 52px - 55+ CONTIGUOUS CLIPS)  */}
-<div className="h-[52px] border-b-2 border-primary-container/40 relative flex items-center bg-[#07090F]" id="v1-track-row">
-{/*  Clustered Continuous Clip Blocks 1 through 55+ with Auto-Sync Transitions  */}
-{/*  Container for injected clips populated dynamically with rich Tokyo B-roll naming  */}
-<div className="absolute inset-0 flex items-center" id="v1-clips-container">
-{/*  Will be enriched via loop to guarantee exact 55 clips with auto-dissolve nodes  */}
-</div>
-</div>
-{/*  TRACK T1: CAPTIONS / TITLES (Height: 36px)  */}
-<div className="h-[36px] border-b border-[#1A2234] relative flex items-center bg-[#0B0E16]/30">
-{/*  Segmented Subtitle Chunk 1  */}
-<div className="timeline-clip absolute left-[0px] w-[180px] h-6 rounded-xs bg-[#241E10] border border-yellow-500/50 flex items-center px-1.5 cursor-pointer shadow-xs" data-scale="100%" data-title="CAPTION_01" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[11px] text-yellow-400 mr-1">subtitles</span>
-<span className="font-mono text-[9px] text-yellow-200 truncate">TOKYO NEVER SLEEPS AT NIGHT</span>
-</div>
-{/*  Segmented Subtitle Chunk 2  */}
-<div className="timeline-clip absolute left-[190px] w-[190px] h-6 rounded-xs bg-[#241E10] border border-yellow-500/50 flex items-center px-1.5 cursor-pointer shadow-xs" data-scale="100%" data-title="CAPTION_02" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[11px] text-yellow-400 mr-1">subtitles</span>
-<span className="font-mono text-[9px] text-yellow-200 truncate">HEAVY RAIN IN SHIBUYA</span>
-</div>
-{/*  Segmented Subtitle Chunk 3 (Active at playhead 00:00:14)  */}
-<div className="timeline-clip absolute left-[390px] w-[230px] h-6 rounded-xs bg-[#302613] border-2 border-yellow-400 flex items-center px-1.5 cursor-pointer shadow-md" data-scale="100%" data-title="CAPTION_03" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[11px] text-yellow-400 mr-1">subtitles</span>
-<span className="font-mono text-[9px] text-white font-bold truncate">NEON LIGHTS REFLECTING ON ASPHALT</span>
-<span className="ml-auto text-[8px] font-mono bg-yellow-400 text-black px-1 rounded-xs">KARAOKE</span>
-</div>
-{/*  Segmented Subtitle Chunk 4  */}
-<div className="timeline-clip absolute left-[630px] w-[220px] h-6 rounded-xs bg-[#241E10] border border-yellow-500/50 flex items-center px-1.5 cursor-pointer shadow-xs" data-scale="100%" data-title="CAPTION_04" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[11px] text-yellow-400 mr-1">subtitles</span>
-<span className="font-mono text-[9px] text-yellow-200 truncate">SPEEDING TOWARDS THE MATRIX</span>
-</div>
-{/*  Subtitle Chunk 5  */}
-<div className="timeline-clip absolute left-[860px] w-[240px] h-6 rounded-xs bg-[#241E10] border border-yellow-500/50 flex items-center px-1.5 cursor-pointer shadow-xs" data-scale="100%" data-title="CAPTION_05" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[11px] text-yellow-400 mr-1">subtitles</span>
-<span className="font-mono text-[9px] text-yellow-200 truncate">THE FUTURE BARS ARE ALWAYS OPEN</span>
-</div>
-{/*  Subtitle Chunk 6  */}
-<div className="timeline-clip absolute left-[1110px] w-[220px] h-6 rounded-xs bg-[#241E10] border border-yellow-500/50 flex items-center px-1.5 cursor-pointer shadow-xs" data-scale="100%" data-title="CAPTION_06" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[11px] text-yellow-400 mr-1">subtitles</span>
-<span className="font-mono text-[9px] text-yellow-200 truncate">CYBER DREAMS AND HIGH OCTANE</span>
-</div>
-{/*  Subtitle Chunk 7+  */}
-<div className="timeline-clip absolute left-[1340px] w-[280px] h-6 rounded-xs bg-[#241E10] border border-yellow-500/50 flex items-center px-1.5 cursor-pointer shadow-xs" data-scale="100%" data-title="CAPTION_07" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[11px] text-yellow-400 mr-1">subtitles</span>
-<span className="font-mono text-[9px] text-yellow-200 truncate">NEO-SHINJUKU ALLEYWAY RETROFIT</span>
-</div>
-</div>
-{/*  AUDIO DIVIDER (Height: 4px)  */}
-<div className="h-1 bg-[#1A2234] border-y border-[#232938] shrink-0"></div>
-{/*  TRACK A1: MASTER DIALOGUE / VOICEOVER (Height: 48px)  */}
-<div className="h-[48px] border-b border-[#1A2234] relative flex items-center bg-[#07130F]/40">
-{/*  Dialogue Audio Clip Continuous  */}
-<div className="absolute left-0 w-[2400px] h-10 rounded-xs bg-[#0F231D] border border-emerald-500/40 flex items-center px-2 overflow-hidden cursor-pointer">
-{/*  Center 0dB Reference Guide Line  */}
-<div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-emerald-500/20 pointer-events-none"></div>
-{/*  High-Contrast Mint-Green Dense Waveform Visualizer  */}
-<svg className="absolute inset-x-0 inset-y-1 w-full h-8 text-emerald-400 opacity-90" preserveAspectRatio="none" viewBox="0 0 1200 40">
-<path d="M0,20 L15,10 L25,30 L35,6 L45,34 L55,18 L65,22 L75,20 L90,20 L110,4 L120,36 L130,12 L140,28 L150,20 L170,20 L180,8 L190,32 L200,16 L210,24 L220,20 L250,20 L270,3 L280,37 L290,10 L300,30 L310,20 L330,20 L350,7 L360,33 L370,14 L380,26 L390,20 L420,20 L440,5 L450,35 L460,11 L470,29 L480,20 L510,20 L530,2 L540,38 L550,14 L560,26 L570,20 L600,20 L620,8 L630,32 L640,15 L650,25 L660,20 L690,20 L710,4 L720,36 L730,12 L740,28 L750,20 L780,20 L800,6 L810,34 L820,16 L830,24 L840,20 L870,20 L890,3 L900,37 L910,10 L920,30 L930,20 L960,20 L980,5 L990,35 L1000,12 L1010,28 L1020,20 L1050,20 L1070,4 L1080,36 L1090,14 L1100,26 L1110,20 L1150,20 L1180,6 L1190,34 L1200,20" fill="none" stroke="currentColor" stroke-width="1.8"></path>
-</svg>
-<div className="relative z-10 flex items-center justify-between w-full">
-<span className="font-mono text-[9px] text-emerald-200 font-semibold bg-[#0A1A14]/80 px-1 rounded-xs">VO_DIALOGUE_ACTOR_MAIN_48K.wav</span>
-<span className="font-mono text-[8px] text-emerald-400 bg-[#0A1A14]/80 px-1 rounded-xs">-1.5 dB (Limiter ON)</span>
-</div>
-</div>
-</div>
-{/*  TRACK A2: BACKGROUND MUSIC BED (Height: 44px)  */}
-<div className="h-[44px] border-b border-[#1A2234] relative flex items-center bg-[#150F07]/40">
-{/*  Music Bed Continuous with Volume Keyframes  */}
-<div className="absolute left-6 w-[4800px] h-9 rounded-xs bg-[#241A0C] border border-amber-500/40 flex items-center px-2 overflow-hidden cursor-pointer">
-{/*  Continuous Dense Pulsing Waveform in Amber  */}
-<svg className="absolute inset-x-0 inset-y-1 w-full h-7 text-amber-400 opacity-70" preserveAspectRatio="none" viewBox="0 0 1600 40">
-<path d="M0,20 L10,12 L20,28 L30,5 L40,35 L50,15 L60,25 L70,2 L80,38 L90,18 L100,22 L110,8 L120,32 L130,16 L140,24 L150,4 L160,36 L170,14 L180,26 L190,10 L200,30 L210,18 L220,22 L230,6 L240,34 L250,16 L260,24 L270,12 L280,28 L290,8 L300,32 L310,15 L320,25 L330,4 L340,36 L350,18 L360,22 L370,10 L380,30 L390,14 L400,26 L410,6 L420,34 L430,18 L440,22 L450,12 L460,28 L470,8 L480,32 L490,16 L500,24 L510,4 L520,36 L530,14 L540,26 L550,10 L560,30 L570,18 L580,22 L590,6 L600,34 L610,16 L620,24 L630,12 L640,28 L650,8 L660,32 L670,15 L680,25 L690,4 L700,36 L710,18 L720,22 L730,10 L740,30 L750,14 L760,26 L770,6 L780,34 L790,18 L800,20 L810,12 L820,28 L830,5 L840,35 L850,15 L860,25 L870,2 L880,38 L890,18 L900,22 L910,8 L920,32 L930,16 L940,24 L950,4 L960,36 L970,14 L980,26 L990,10 L1000,30 L1010,18 L1020,22 L1030,6 L1040,34 L1050,16 L1060,24 L1070,12 L1080,28 L1090,8 L1100,32 L1110,15 L1120,25 L1130,4 L1140,36 L1150,18 L1160,22 L1170,10 L1180,30 L1190,14 L1200,26 L1210,6 L1220,34 L1230,18 L1240,22 L1250,12 L1260,28 L1270,8 L1280,32 L1290,16 L1300,24 L1310,4 L1320,36 L1330,14 L1340,26 L1350,10 L1360,30 L1370,18 L1380,22 L1390,6 L1400,34 L1410,16 L1420,24 L1430,12 L1440,28 L1450,8 L1460,32 L1470,15 L1480,25 L1490,4 L1500,36 L1510,18 L1520,22 L1530,10 L1540,30 L1550,14 L1560,26 L1570,6 L1580,34 L1590,18 L1600,20" fill="none" stroke="currentColor" stroke-width="1.3"></path>
-{/*  Gain Automation Envelope Line with Diamond Nodes  */}
-<polyline fill="none" points="0,20 180,20 220,28 600,28 650,18 900,18 950,30 1400,30 1460,18 1600,20" stroke="#fcd34d" stroke-dasharray="2,2" stroke-width="1"></polyline>
-<circle cx="220" cy="28" fill="#f59e0b" r="2.5"></circle>
-<circle cx="600" cy="28" fill="#f59e0b" r="2.5"></circle>
-<circle cx="650" cy="18" fill="#f59e0b" r="2.5"></circle>
-<circle cx="950" cy="30" fill="#f59e0b" r="2.5"></circle>
-</svg>
-<div className="relative z-10 flex items-center justify-between w-full">
-<span className="font-mono text-[9px] text-amber-200 font-semibold bg-[#181105]/80 px-1 rounded-xs">CYBER_SYNTH_WAVE_BED_MASTER.wav</span>
-<span className="font-mono text-[8px] text-amber-400 bg-[#181105]/80 px-1 rounded-xs">-14.0 dB Auto-Ducked</span>
-</div>
-</div>
-</div>
-{/*  TRACK A3: SFX / FOLEY (Height: 38px)  */}
-<div className="h-[38px] border-b border-[#1A2234] relative flex items-center bg-[#071018]/40">
-{/*  SFX 1  */}
-<div className="timeline-clip absolute left-[190px] w-36 h-7 rounded-xs bg-[#0F1C2B] border border-sky-500/40 flex items-center px-1.5 cursor-pointer hover:border-sky-300" data-scale="100%" data-title="SWOOSH_RISE.wav" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[12px] text-sky-400 mr-1">graphic_eq</span>
-<span className="font-mono text-[9px] text-sky-200 truncate">SWOOSH_RISE.wav</span>
-</div>
-{/*  SFX 2  */}
-<div className="timeline-clip absolute left-[450px] w-44 h-7 rounded-xs bg-[#0F1C2B] border border-sky-500/40 flex items-center px-1.5 cursor-pointer hover:border-sky-300" data-scale="100%" data-title="SUB_IMPACT_BOOM.wav" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[12px] text-sky-400 mr-1">graphic_eq</span>
-<span className="font-mono text-[9px] text-sky-200 truncate">SUB_IMPACT_BOOM.wav</span>
-</div>
-{/*  SFX 3  */}
-<div className="timeline-clip absolute left-[780px] w-32 h-7 rounded-xs bg-[#0F1C2B] border border-sky-500/40 flex items-center px-1.5 cursor-pointer hover:border-sky-300" data-scale="100%" data-title="CYBER_BLIP_01.wav" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[12px] text-sky-400 mr-1">graphic_eq</span>
-<span className="font-mono text-[9px] text-sky-200 truncate">CYBER_BLIP.wav</span>
-</div>
-{/*  SFX 4  */}
-<div className="timeline-clip absolute left-[1180px] w-40 h-7 rounded-xs bg-[#0F1C2B] border border-sky-500/40 flex items-center px-1.5 cursor-pointer hover:border-sky-300" data-scale="100%" data-title="NEON_HUM_FOLEY.wav" data-x="0" data-y="0">
-<span className="material-symbols-outlined text-[12px] text-sky-400 mr-1">graphic_eq</span>
-<span className="font-mono text-[9px] text-sky-200 truncate">NEON_HUM_FOLEY.wav</span>
-</div>
-</div>
-{/*  =========================================================================  */}
-{/*  INTERACTIVE PLAYHEAD NEEDLE & SCRUBBING SYSTEM  */}
-{/*  =========================================================================  */}
-<div className="absolute top-0 bottom-0 w-0.5 z-40 cursor-ew-resize flex flex-col items-center pointer-events-auto transition-[left] duration-75" id="playhead-needle" style={{ left: `${playheadPixelX}px`, touchAction: "none" }} onPointerDown={handlePlayheadPointerDown} onPointerMove={handlePlayheadPointerMove} onPointerUp={handlePlayheadPointerUp}>
-{/*  Top Diamond Handle (Neon Cyan #06B6D4 sharp 0px blur)  */}
-<div className="w-3.5 h-3.5 -mt-1.5 bg-[#06B6D4] rotate-45 border border-white flex items-center justify-center shadow-md">
-<div className="w-1 h-1 bg-black rounded-full"></div>
-</div>
-{/*  Exact 1px vertical razor cursor line spanning full timeline  */}
-<div className="w-[1.5px] flex-1 bg-[#06B6D4]"></div>
-{/*  Magnetic subtle locator dot  */}
-<div className="w-2 h-2 rounded-full bg-[#06B6D4]/30 -mb-1"></div>
-</div>
-</div>
+<div
+  ref={scrollContainerRef}
+  onScroll={handleScroll}
+  className="flex-1 flex flex-col overflow-x-auto overflow-y-hidden relative bg-[#07090F] select-none"
+  id="timeline-scroll-container"
+>
+  <div style={{ width: `${totalTimelineWidth}px` }} className="relative flex-1 flex flex-col min-w-full">
+    {/* SMPTE TIME RULER & RENDER CACHE BAR */}
+    <TimelineRuler
+      totalWidth={totalTimelineWidth}
+      zoomPxPerSecond={zoomPxPerSecond}
+      fps={fps}
+      totalFrames={totalSequenceFrames}
+      scrollLeft={scrollLeft}
+      viewportWidth={viewportWidth}
+      onSeek={seekToFrame}
+      snapPoints={snapPoints}
+      snappingEnabled={snappingEnabled}
+    />
+
+    {/* MASTER TRACKS CANVAS WRAPPER */}
+    <div className="flex-1 flex flex-col relative bg-[#080B12]" id="timeline-tracks-area">
+      {/* Video Tracks (V2, V1, T1) */}
+      {tracks
+        .filter((t) => t.type === "video")
+        .map((track) => (
+          <VirtualizedTrackLane
+            key={track.id}
+            track={track}
+            clips={clips.filter((c) => c.trackId === track.id)}
+            transitions={track.id === "V1" ? transitions : undefined}
+            totalWidth={totalTimelineWidth}
+            zoomPxPerSecond={zoomPxPerSecond}
+            fps={fps}
+            scrollLeft={scrollLeft}
+            viewportWidth={viewportWidth}
+            selectedClipId={selectedClipId}
+            onSelectClip={selectClip}
+          />
+        ))}
+
+      {/* Audio Divider Spacer */}
+      <div className="h-1 bg-[#1A2234] border-y border-[#232938] shrink-0"></div>
+
+      {/* Audio Tracks (A1, A2, A3) */}
+      {tracks
+        .filter((t) => t.type === "audio")
+        .map((track) => (
+          <VirtualizedTrackLane
+            key={track.id}
+            track={track}
+            clips={clips.filter((c) => c.trackId === track.id)}
+            totalWidth={totalTimelineWidth}
+            zoomPxPerSecond={zoomPxPerSecond}
+            fps={fps}
+            scrollLeft={scrollLeft}
+            viewportWidth={viewportWidth}
+            selectedClipId={selectedClipId}
+            onSelectClip={selectClip}
+          />
+        ))}
+    </div>
+
+    {/* INTERACTIVE PLAYHEAD NEEDLE & SCRUBBING SYSTEM */}
+    <div
+      className="absolute top-0 bottom-0 w-0.5 z-40 cursor-ew-resize flex flex-col items-center pointer-events-auto transition-[left] duration-75"
+      id="playhead-needle"
+      style={{ left: `${playheadPixelX}px`, touchAction: "none" }}
+      onPointerDown={handlePlayheadPointerDown}
+      onPointerMove={handlePlayheadPointerMove}
+      onPointerUp={handlePlayheadPointerUp}
+    >
+      {/* Top Diamond Handle */}
+      <div className="w-3.5 h-3.5 -mt-1.5 bg-[#06B6D4] rotate-45 border border-white flex items-center justify-center shadow-md">
+        <div className="w-1 h-1 bg-black rounded-full"></div>
+      </div>
+      {/* Exact 1.5px vertical razor cursor line spanning full timeline */}
+      <div className="w-[1.5px] flex-1 bg-[#06B6D4]"></div>
+      {/* Magnetic subtle locator dot */}
+      <div className="w-2 h-2 rounded-full bg-[#06B6D4]/30 -mb-1"></div>
+    </div>
+  </div>
 </div>
 </div>
 </section>
