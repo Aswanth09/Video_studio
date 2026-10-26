@@ -16,7 +16,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/Aswanth09/Video_studio/issues"
   },
@@ -29,10 +29,11 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "autoprefixer": "^10.6.1",
+    "esbuild": "^0.28.2",
     "postcss": "^8.5.31",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "tailwindcss": "^4.3.3",
+    "tailwindcss": "^3.4.17",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
   },

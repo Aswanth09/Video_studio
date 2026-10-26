@@ -146,7 +146,7 @@ export const Editor3PanelScreen: React.FC<Editor3PanelScreenProps> = ({
 {/*  Asset Card 4  */}
 <div className="group relative flex flex-col bg-surface-container rounded overflow-hidden cursor-pointer hover:ring-1 hover:ring-secondary transition-all">
 <div className="relative w-full aspect-video bg-surface-dim overflow-hidden flex items-center justify-center bg-gradient-to-br from-surface-container-lowest to-surface-container-high">
-<svg className="w-20 h-8 text-secondary opacity-80" preserveaspectratio="none" viewbox="0 0 100 30">
+<svg className="w-20 h-8 text-secondary opacity-80" preserveAspectRatio="none" viewBox="0 0 100 30">
 <path d="M0,15 Q5,2 10,15 T20,15 T30,0 T40,28 T50,15 T60,5 T70,25 T80,12 T90,19 T100,15" fill="none" stroke="currentColor" stroke-width="2"></path>
 </svg>
 <span className="absolute bottom-1 right-1 px-1 rounded bg-surface-container-lowest/85 font-label-sm text-label-sm text-tertiary">02:14:00</span>
@@ -396,7 +396,7 @@ export const Editor3PanelScreen: React.FC<Editor3PanelScreenProps> = ({
 {/*  Effect Item 1  */}
 <div className="flex items-center justify-between p-1.5 rounded bg-surface-container-lowest border border-surface-container-high">
 <div className="flex items-center gap-1.5">
-<input checked="" className="accent-secondary w-3 h-3" type="checkbox"/>
+<input defaultChecked className="accent-secondary w-3 h-3" type="checkbox"/>
 <span className="font-headline-md text-headline-md text-xs text-on-surface">Tokyo_Noir_04.cube</span>
 </div>
 <span className="font-label-sm text-[10px] text-tertiary px-1 py-0.2 rounded bg-tertiary/10">3D LUT 33x</span>
@@ -404,7 +404,7 @@ export const Editor3PanelScreen: React.FC<Editor3PanelScreenProps> = ({
 {/*  Effect Item 2  */}
 <div className="flex items-center justify-between p-1.5 rounded bg-surface-container-lowest border border-surface-container-high">
 <div className="flex items-center gap-1.5">
-<input checked="" className="accent-secondary w-3 h-3" type="checkbox"/>
+<input defaultChecked className="accent-secondary w-3 h-3" type="checkbox"/>
 <span className="font-headline-md text-headline-md text-xs text-on-surface">Optical Flow Stabilization</span>
 </div>
 <span className="font-label-sm text-[10px] text-secondary px-1 py-0.2 rounded bg-secondary/10">LOCKED</span>
@@ -412,7 +412,7 @@ export const Editor3PanelScreen: React.FC<Editor3PanelScreenProps> = ({
 {/*  Effect Item 3  */}
 <div className="flex items-center justify-between p-1.5 rounded bg-surface-container-lowest border border-surface-container-high">
 <div className="flex items-center gap-1.5">
-<input checked="" className="accent-secondary w-3 h-3" type="checkbox"/>
+<input defaultChecked className="accent-secondary w-3 h-3" type="checkbox"/>
 <span className="font-headline-md text-headline-md text-xs text-on-surface">Spatial Noise Reduction</span>
 </div>
 <span className="font-label-sm text-[10px] text-primary px-1 py-0.2 rounded bg-primary/10">CUDA ACCEL</span>
@@ -428,7 +428,7 @@ export const Editor3PanelScreen: React.FC<Editor3PanelScreenProps> = ({
 </div>
 {/*  SVG Parametric EQ Mini Curve  */}
 <div className="h-14 w-full bg-surface-container-lowest rounded p-1 relative border border-surface-container-high flex items-center justify-center">
-<svg className="w-full h-full text-secondary" preserveaspectratio="none" viewbox="0 0 200 60">
+<svg className="w-full h-full text-secondary" preserveAspectRatio="none" viewBox="0 0 200 60">
 {/*  Grid lines  */}
 <line stroke="#1E2536" stroke-dasharray="2,2" stroke-width="1" x1="0" x2="200" y1="30" y2="30"></line>
 <line stroke="#1E2536" stroke-width="1" x1="50" x2="50" y1="0" y2="60"></line>
@@ -601,7 +601,7 @@ export const Editor3PanelScreen: React.FC<Editor3PanelScreenProps> = ({
 <div className="h-10 border-b border-surface-container-high/40 relative flex items-center">
 {/*  Cutaway Clip 1  */}
 <div className="absolute left-64 w-96 h-8 rounded bg-surface-container-high border border-surface-bright flex items-center px-2 cursor-pointer hover:border-secondary transition-colors overflow-hidden">
-<div className="absolute inset-0 opacity-20 bg-cover bg-center" alt="Micro filmstrip segment of neon signs in alleyway" style={{ "backgroundImage": "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCJErGbfPiifVPqTCfmnmj9LhL9LBBJtPrU6QqZgFcXKNj1cjf3SLQJv6RRmcWWFWYRaPmZL2yUygKDPFAW5dIitjWhcRrbusw3dFFAOJqibdAZOp4nIHBRy6KhVzyTN22-gtrCD6XlzhxPhZUM3M3xKcP41uPXAIuIoNYB2X8dxO4GZVoawTzrVyDGp6mb9wz0auYgQj1QgCyEY8C271RkJHBleqgbru1XG0EGfcmaDzk3WsOWGX5r')" }}></div>
+<div className="absolute inset-0 opacity-20 bg-cover bg-center" style={{ "backgroundImage": "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCJErGbfPiifVPqTCfmnmj9LhL9LBBJtPrU6QqZgFcXKNj1cjf3SLQJv6RRmcWWFWYRaPmZL2yUygKDPFAW5dIitjWhcRrbusw3dFFAOJqibdAZOp4nIHBRy6KhVzyTN22-gtrCD6XlzhxPhZUM3M3xKcP41uPXAIuIoNYB2X8dxO4GZVoawTzrVyDGp6mb9wz0auYgQj1QgCyEY8C271RkJHBleqgbru1XG0EGfcmaDzk3WsOWGX5r')" }}></div>
 <span className="relative font-body-sm text-xs text-on-surface truncate font-medium">B-ROLL_SUBWAY_FASTPASS.MOV</span>
 <span className="relative ml-auto font-mono text-[9px] text-secondary">06:22</span>
 </div>
@@ -632,7 +632,7 @@ export const Editor3PanelScreen: React.FC<Editor3PanelScreenProps> = ({
 {/*  Dialogue Wave Clip  */}
 <div className="absolute left-0 w-[42rem] h-8 rounded bg-surface-container border border-secondary/40 flex items-center px-2 overflow-hidden cursor-pointer">
 {/*  Rendered Vector Audio Waveform  */}
-<svg className="absolute inset-x-0 inset-y-1 w-full h-6 text-secondary opacity-70" preserveaspectratio="none" viewbox="0 0 500 40">
+<svg className="absolute inset-x-0 inset-y-1 w-full h-6 text-secondary opacity-70" preserveAspectRatio="none" viewBox="0 0 500 40">
 <path d="M0,20 Q10,5 20,20 T40,20 T60,2 T80,38 T100,20 T120,8 T140,32 T160,20 T180,4 T200,36 T220,20 T240,12 T260,28 T280,20 T300,6 T320,34 T340,20 T360,10 T380,30 T400,20 T420,15 T440,25 T460,20 T480,8 T500,20" fill="none" stroke="currentColor" stroke-width="2"></path>
 </svg>
 <span className="relative font-body-sm text-xs text-white z-10 drop-shadow">DIALOGUE_ACTOR_MAIN_MIC.WAV</span>
@@ -643,7 +643,7 @@ export const Editor3PanelScreen: React.FC<Editor3PanelScreenProps> = ({
 <div className="h-10 border-b border-surface-container-high/40 relative flex items-center">
 {/*  Music Clip with Dense Waveform  */}
 <div className="absolute left-16 w-[70rem] h-8 rounded bg-[#121824] border border-tertiary/40 flex items-center px-2 overflow-hidden cursor-pointer">
-<svg className="absolute inset-x-0 inset-y-1 w-full h-6 text-tertiary opacity-60" preserveaspectratio="none" viewbox="0 0 800 40">
+<svg className="absolute inset-x-0 inset-y-1 w-full h-6 text-tertiary opacity-60" preserveAspectRatio="none" viewBox="0 0 800 40">
 <path d="M0,20 L10,12 L20,28 L30,5 L40,35 L50,15 L60,25 L70,2 L80,38 L90,18 L100,22 L110,8 L120,32 L130,16 L140,24 L150,4 L160,36 L170,14 L180,26 L190,10 L200,30 L210,18 L220,22 L230,6 L240,34 L250,16 L260,24 L270,12 L280,28 L290,8 L300,32 L310,15 L320,25 L330,4 L340,36 L350,18 L360,22 L370,10 L380,30 L390,14 L400,26 L410,6 L420,34 L430,18 L440,22 L450,12 L460,28 L470,8 L480,32 L490,16 L500,24 L510,4 L520,36 L530,14 L540,26 L550,10 L560,30 L570,18 L580,22 L590,6 L600,34 L610,16 L620,24 L630,12 L640,28 L650,8 L660,32 L670,15 L680,25 L690,4 L700,36 L710,18 L720,22 L730,10 L740,30 L750,14 L760,26 L770,6 L780,34 L790,18 L800,20" fill="none" stroke="currentColor" stroke-width="1.5"></path>
 </svg>
 <span className="relative font-body-sm text-xs text-tertiary z-10 drop-shadow">CYBER_SYNTH_WAVE_BED_MASTER.WAV</span>

@@ -407,24 +407,9 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">data_object</span>reactive_state.json</span>
 <span className="text-secondary font-label-sm text-label-sm">READ / WRITE BINDING</span>
 </div>
-<pre className="font-label-sm text-label-sm text-primary leading-relaxed whitespace-pre font-mono" id="jsonStateDisplay">{
-  "id": "proj_916_tokyo",
-  "name": "Tokyo_Night_Reel_2025",
-  "aspectRatio": "9:16",
-  "dimensions": { "width": 1080, "height": 1920 },
-  "fps": 60,
-  "syncMode": "auto_waveform",
-  "tracks": {
-    "video": 3,
-    "audio": 4,
-    "captions": 1
-  },
-  "zoomLevel": 1.25,
-  "playheadTime": "00:00:14:08",
-  "duration": "00:00:45:12",
-  "colorSpace": "ACEScc / Rec.709",
-  "proxyStatus": "ACTIVE_PRORES_422_PROXY"
-}</pre>
+<pre className="font-label-sm text-label-sm text-primary leading-relaxed whitespace-pre font-mono" id="jsonStateDisplay">
+{JSON.stringify(activeProject, null, 2)}
+</pre>
 </div>
 {/*  Direct Live Tweaker for state verification  */}
 <div className="w-full lg:w-80 flex flex-col gap-space-sm bg-surface-container-low p-space-md rounded-lg">
@@ -432,20 +417,20 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <p className="text-outline font-body-sm text-body-sm">Mutate selected Zustand state on the fly before bootstrapping workspace.</p>
 <div className="flex flex-col gap-1 mt-1">
 <label className="text-outline font-label-sm text-label-sm">Active Sequence Title</label>
-<input className="w-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-secondary" id="tweakNameInput"  type="text" value="Tokyo_Night_Reel_2025"/>
+<input className="w-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-secondary" id="tweakNameInput"  type="text" defaultValue="Tokyo_Night_Reel_2025"/>
 </div>
 <div className="grid grid-cols-2 gap-space-sm mt-1">
 <div>
 <label className="text-outline font-label-sm text-label-sm">FPS</label>
-<select className="w-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-secondary" id="tweakFpsSelect" >
+<select className="w-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-secondary" id="tweakFpsSelect" defaultValue="60">
 <option value="24">24 FPS</option>
 <option value="30">30 FPS</option>
-<option selected="" value="60">60 FPS</option>
+<option value="60">60 FPS</option>
 </select>
 </div>
 <div>
 <label className="text-outline font-label-sm text-label-sm">Timeline Zoom</label>
-<input className="w-full mt-2 accent-secondary cursor-pointer" max="3" min="0.5"  step="0.25" type="range" value="1.25"/>
+<input className="w-full mt-2 accent-secondary cursor-pointer" max="3" min="0.5"  step="0.25" type="range" defaultValue="1.25"/>
 </div>
 </div>
 <div className="mt-space-sm pt-space-xs flex items-center justify-between text-outline font-label-sm text-label-sm">
@@ -476,7 +461,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </button>
 </div>
 {/*  Modal Body  */}
-<form className="p-space-xl flex flex-col gap-space-lg max-h-[819px] overflow-y-auto" id="newProjectForm" onsubmit="event.preventDefault(); submitCreateProject();">
+<form className="p-space-xl flex flex-col gap-space-lg max-h-[819px] overflow-y-auto" id="newProjectForm" onSubmit={(e) => { e.preventDefault(); }}>
 {/*  Project Title Input  */}
 <div className="flex flex-col gap-space-xs">
 <label className="text-on-surface font-body-sm text-body-sm font-semibold flex items-center justify-between" htmlFor="projectTitleInput">
@@ -485,7 +470,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </label>
 <div className="relative flex items-center">
 <span className="material-symbols-outlined absolute left-3 text-secondary text-[18px]">terminal</span>
-<input className="w-full bg-surface-container-lowest text-on-surface font-label-md text-label-md pl-10 pr-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary" id="projectTitleInput" required="" type="text" value="Neon_Drift_Cinematic_v1"/>
+<input className="w-full bg-surface-container-lowest text-on-surface font-label-md text-label-md pl-10 pr-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary" id="projectTitleInput" required type="text" value="Neon_Drift_Cinematic_v1"/>
 </div>
 </div>
 {/*  Aspect Ratio Selector Grid  */}
@@ -497,7 +482,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <div className="grid grid-cols-1 md:grid-cols-3 gap-space-sm" id="aspectRatioGroup">
 {/*  9:16 (Selected by default)  */}
 <label className="aspect-card cursor-pointer relative flex flex-col p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-all shadow-sm">
-<input checked="" className="sr-only" name="aspectRatio"  type="radio" value="9:16"/>
+<input defaultChecked className="sr-only" name="aspectRatio"  type="radio" value="9:16"/>
 <div className="aspect-indicator absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-on-secondary text-[10px]">
 <span className="material-symbols-outlined text-[12px]">check</span>
 </div>
@@ -567,7 +552,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 </label>
 {/*  60 fps (Selected)  */}
 <label className="cursor-pointer flex items-center justify-between p-space-md rounded-xl bg-surface-container-highest shadow-sm">
-<input checked="" className="sr-only" name="projectFps"  type="radio" value="60"/>
+<input defaultChecked className="sr-only" name="projectFps"  type="radio" value="60"/>
 <div className="flex flex-col">
 <span className="font-label-md text-label-md font-semibold text-secondary">60 fps</span>
 <span className="font-label-sm text-label-sm text-outline">High Motion / Gaming</span>
@@ -581,7 +566,7 @@ export const ProjectHubScreen: React.FC<ProjectHubScreenProps> = ({
 <label className="text-on-surface font-body-sm text-body-sm font-semibold">Audio Sync Engine</label>
 <div className="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
 <label className="cursor-pointer flex items-start gap-space-sm p-space-md rounded-xl bg-surface-container-highest shadow-sm">
-<input checked="" className="mt-1 accent-secondary" name="audioSync" type="radio" value="auto"/>
+<input defaultChecked className="mt-1 accent-secondary" name="audioSync" type="radio" value="auto"/>
 <div className="flex flex-col">
 <span className="font-label-md text-label-md font-semibold text-on-surface">Auto-Sync via Waveform</span>
 <span className="font-body-sm text-body-sm text-outline">Analyzes audio peaks across multi-cam scratch tracks automatically.</span>

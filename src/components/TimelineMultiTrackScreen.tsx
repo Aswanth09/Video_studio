@@ -131,21 +131,21 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 </div>
 <div className="flex items-center justify-between p-1 rounded-sm bg-[#0A0D14] border border-[#232938] text-[10px]">
 <div className="flex items-center gap-1.5">
-<input checked="" className="accent-secondary w-3 h-3" type="checkbox"/>
+<input defaultChecked className="accent-secondary w-3 h-3" type="checkbox"/>
 <span className="font-headline-md text-on-surface">Tokyo_Noir_04.cube</span>
 </div>
 <span className="font-label-sm text-[9px] text-tertiary px-1 py-0.2 rounded-xs bg-tertiary/10">3D LUT 33x</span>
 </div>
 <div className="flex items-center justify-between p-1 rounded-sm bg-[#0A0D14] border border-[#232938] text-[10px]">
 <div className="flex items-center gap-1.5">
-<input checked="" className="accent-secondary w-3 h-3" type="checkbox"/>
+<input defaultChecked className="accent-secondary w-3 h-3" type="checkbox"/>
 <span className="font-headline-md text-on-surface">Optical Flow Lock</span>
 </div>
 <span className="font-label-sm text-[9px] text-secondary px-1 py-0.2 rounded-xs bg-secondary/10">LOCKED</span>
 </div>
 <div className="flex items-center justify-between p-1 rounded-sm bg-[#0A0D14] border border-[#232938] text-[10px]">
 <div className="flex items-center gap-1.5">
-<input checked="" className="accent-secondary w-3 h-3" type="checkbox"/>
+<input defaultChecked className="accent-secondary w-3 h-3" type="checkbox"/>
 <span className="font-headline-md text-on-surface">Spatial Noise Reduct.</span>
 </div>
 <span className="font-label-sm text-[9px] text-primary px-1 py-0.2 rounded-xs bg-primary/10">CUDA ACCEL</span>
@@ -158,7 +158,7 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 <span className="text-secondary font-mono text-[9px]">-14 LUFS Target</span>
 </div>
 <div className="h-10 w-full bg-[#0A0D14] rounded-sm p-0.5 relative border border-[#232938] flex items-center justify-center">
-<svg className="w-full h-full text-secondary" preserveaspectratio="none" viewbox="0 0 200 40">
+<svg className="w-full h-full text-secondary" preserveAspectRatio="none" viewBox="0 0 200 40">
 <line stroke="#1E2536" stroke-dasharray="2,2" stroke-width="1" x1="0" x2="200" y1="20" y2="20"></line>
 <line stroke="#1E2536" stroke-width="1" x1="60" x2="60" y1="0" y2="40"></line>
 <line stroke="#1E2536" stroke-width="1" x1="120" x2="120" y1="0" y2="40"></line>
@@ -496,7 +496,7 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 {/*  Center 0dB Reference Guide Line  */}
 <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-emerald-500/20 pointer-events-none"></div>
 {/*  High-Contrast Mint-Green Dense Waveform Visualizer  */}
-<svg className="absolute inset-x-0 inset-y-1 w-full h-8 text-emerald-400 opacity-90" preserveaspectratio="none" viewbox="0 0 1200 40">
+<svg className="absolute inset-x-0 inset-y-1 w-full h-8 text-emerald-400 opacity-90" preserveAspectRatio="none" viewBox="0 0 1200 40">
 <path d="M0,20 L15,10 L25,30 L35,6 L45,34 L55,18 L65,22 L75,20 L90,20 L110,4 L120,36 L130,12 L140,28 L150,20 L170,20 L180,8 L190,32 L200,16 L210,24 L220,20 L250,20 L270,3 L280,37 L290,10 L300,30 L310,20 L330,20 L350,7 L360,33 L370,14 L380,26 L390,20 L420,20 L440,5 L450,35 L460,11 L470,29 L480,20 L510,20 L530,2 L540,38 L550,14 L560,26 L570,20 L600,20 L620,8 L630,32 L640,15 L650,25 L660,20 L690,20 L710,4 L720,36 L730,12 L740,28 L750,20 L780,20 L800,6 L810,34 L820,16 L830,24 L840,20 L870,20 L890,3 L900,37 L910,10 L920,30 L930,20 L960,20 L980,5 L990,35 L1000,12 L1010,28 L1020,20 L1050,20 L1070,4 L1080,36 L1090,14 L1100,26 L1110,20 L1150,20 L1180,6 L1190,34 L1200,20" fill="none" stroke="currentColor" stroke-width="1.8"></path>
 </svg>
 <div className="relative z-10 flex items-center justify-between w-full">
@@ -510,7 +510,7 @@ export const TimelineMultiTrackScreen: React.FC<TimelineMultiTrackScreenProps> =
 {/*  Music Bed Continuous with Volume Keyframes  */}
 <div className="absolute left-6 w-[4800px] h-9 rounded-xs bg-[#241A0C] border border-amber-500/40 flex items-center px-2 overflow-hidden cursor-pointer">
 {/*  Continuous Dense Pulsing Waveform in Amber  */}
-<svg className="absolute inset-x-0 inset-y-1 w-full h-7 text-amber-400 opacity-70" preserveaspectratio="none" viewbox="0 0 1600 40">
+<svg className="absolute inset-x-0 inset-y-1 w-full h-7 text-amber-400 opacity-70" preserveAspectRatio="none" viewBox="0 0 1600 40">
 <path d="M0,20 L10,12 L20,28 L30,5 L40,35 L50,15 L60,25 L70,2 L80,38 L90,18 L100,22 L110,8 L120,32 L130,16 L140,24 L150,4 L160,36 L170,14 L180,26 L190,10 L200,30 L210,18 L220,22 L230,6 L240,34 L250,16 L260,24 L270,12 L280,28 L290,8 L300,32 L310,15 L320,25 L330,4 L340,36 L350,18 L360,22 L370,10 L380,30 L390,14 L400,26 L410,6 L420,34 L430,18 L440,22 L450,12 L460,28 L470,8 L480,32 L490,16 L500,24 L510,4 L520,36 L530,14 L540,26 L550,10 L560,30 L570,18 L580,22 L590,6 L600,34 L610,16 L620,24 L630,12 L640,28 L650,8 L660,32 L670,15 L680,25 L690,4 L700,36 L710,18 L720,22 L730,10 L740,30 L750,14 L760,26 L770,6 L780,34 L790,18 L800,20 L810,12 L820,28 L830,5 L840,35 L850,15 L860,25 L870,2 L880,38 L890,18 L900,22 L910,8 L920,32 L930,16 L940,24 L950,4 L960,36 L970,14 L980,26 L990,10 L1000,30 L1010,18 L1020,22 L1030,6 L1040,34 L1050,16 L1060,24 L1070,12 L1080,28 L1090,8 L1100,32 L1110,15 L1120,25 L1130,4 L1140,36 L1150,18 L1160,22 L1170,10 L1180,30 L1190,14 L1200,26 L1210,6 L1220,34 L1230,18 L1240,22 L1250,12 L1260,28 L1270,8 L1280,32 L1290,16 L1300,24 L1310,4 L1320,36 L1330,14 L1340,26 L1350,10 L1360,30 L1370,18 L1380,22 L1390,6 L1400,34 L1410,16 L1420,24 L1430,12 L1440,28 L1450,8 L1460,32 L1470,15 L1480,25 L1490,4 L1500,36 L1510,18 L1520,22 L1530,10 L1540,30 L1550,14 L1560,26 L1570,6 L1580,34 L1590,18 L1600,20" fill="none" stroke="currentColor" stroke-width="1.3"></path>
 {/*  Gain Automation Envelope Line with Diamond Nodes  */}
 <polyline fill="none" points="0,20 180,20 220,28 600,28 650,18 900,18 950,30 1400,30 1460,18 1600,20" stroke="#fcd34d" stroke-dasharray="2,2" stroke-width="1"></polyline>
